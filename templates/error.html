@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>{{ ic.icon('alert', 18) }} {{ code }}</h2>
+      <p>{{ message }}</p>
+    </div>
+  </div>
+  <p class="muted">
+    The page or resource you asked for is not available. Use the navigation on the left, or start
+    again from the overview dashboard.
+  </p>
+  <div class="btn-row">
+    <a class="btn btn-primary" href="{{ url_for('index') }}">{{ ic.icon('dashboard', 18) }} Back to overview</a>
+    <a class="btn btn-outline" href="{{ url_for('recommend') }}">{{ ic.icon('sprout', 18) }} Recommend a crop</a>
+  </div>
+</section>
+{% endblock %}

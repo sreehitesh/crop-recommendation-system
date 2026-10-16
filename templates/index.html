@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block content %}
+
+<section class="hero">
+  <h2>{{ summary.app_name }}</h2>
+  <p>
+    Enter seven soil and weather measurements and a trained machine learning classifier
+    suggests the crop most consistent with those conditions. Every number shown in this
+    dashboard is calculated from the real dataset and from the actual training run.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-light" href="{{ url_for('recommend') }}">
+      {{ ic.icon('sprout', 18) }} Get Crop Recommendation
+    </a>
+    <a class="btn btn-outline" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.4)" href="{{ url_for('performance') }}">
+      {{ ic.icon('chart', 18) }} View Model Performance
+    </a>
+  </div>
+  <div class="hero-badges">
+    <span class="hero-badge">{{ ic.icon('database', 15) }} {{ summary.dataset.rows if summary.dataset.rows else '–' }} dataset records</span>
+    <span class="hero-badge">{{ ic.icon('leaf', 15) }} {{ summary.dataset.n_classes if summary.dataset.n_classes else '–' }} crop classes</span>
+    <span class="hero-badge">{{ ic.icon('cpu', 15) }} {{ summary.model.name if summary.model.name else 'Model not trained yet' }}</span>
+  </div>
+</section>
+
+{% if not summary.setup.metrics_ready or not summary.setup.dataset_ready or not summary.setup.model_ready %}
+<div class="alert alert-warn">
+  {{ ic.icon('alert', 18) }}
+  <div>
+    <strong>Setup status</strong>
+    <ul>
+      <li>Dataset loaded: <strong>{{ 'yes' if summary.setup.dataset_ready else 'no' }}</strong>
+        {% if not summary.setup.dataset_ready %} &mdash; run <code>python src/download_dataset.py</code> or place <code>Crop_recommendation.csv</code> in <code>data/</code>{% endif %}</li>
+      <li>Trained model loaded: <strong>{{ 'yes' if summary.setup.model_ready else 'no' }}</strong>
+        {% if not summary.setup.model_ready %} &mdash; run <code>{{ summary.setup.train_command }}</code>{% endif %}</li>
+      <li>Evaluation metrics available: <strong>{{ 'yes' if summary.setup.metrics_ready else 'no' }}</strong></li>
+    </ul>
+    <p style="margin:.4rem 0 0">The dashboard never shows placeholder numbers: until the pipeline has run, the affected cards stay marked as unavailable.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-auto">
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Dataset records</span>{{ ic.icon('database', 18) }}</div>
+    {% if summary.dataset.rows %}
+      <div class="stat-value">{{ "{:,}".format(summary.dataset.rows) }}</div>
+      <div class="stat-hint">{{ summary.dataset.file }} &middot; 7 input features</div>
+    {% else %}
+      <div class="stat-value is-muted">Not available</div>
+      <div class="stat-hint">Run the dataset download step.</div>
+    {% endif %}
+  </div>
+
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Crop classes</span>{{ ic.icon('leaf', 18) }}</div>
+    {% if summary.dataset.n_classes %}
+      <div class="stat-value">{{ summary.dataset.n_classes }}</div>
+      <div class="stat-hint">labelled crops in the target column</div>
+    {% else %}
+      <div class="stat-value is-muted">Not available</div>
+      <div class="stat-hint">Load the dataset to count classes.</div>
+    {% endif %}
+  </div>
+
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Selected algorithm</span>{{ ic.icon('cpu', 18) }}</div>
+    {% if summary.model.name %}
+      <div class="stat-value is-muted">{{ summary.model.name }}</div>
+      <div class="stat-hint">chosen from measured test metrics</div>
+    {% else %}
+      <div class="stat-value is-muted">Not trained yet</div>
+      <div class="stat-hint">Run <span class="mono">{{ summary.setup.train_command }}</span></div>
+    {% endif %}
+  </div>
+
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Held-out test accuracy</span>{{ ic.icon('target', 18) }}</div>
+    {% if summary.metrics and summary.metrics.accuracy is not none %}
+      <div class="stat-value">{{ "%.2f"|format(summary.metrics.accuracy * 100) }}%</div>
+      <div class="stat-hint">measured on {{ summary.metrics.test_rows }} unseen test records</div>
+    {% else %}
+      <div class="stat-value is-muted">Not available</div>
+      <div class="stat-hint">No evaluation run recorded yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Held-out macro F1</span>{{ ic.icon('chart', 18) }}</div>
+    {% if summary.metrics and summary.metrics.macro_f1 is not none %}
+      <div class="stat-value">{{ "%.3f"|format(summary.metrics.macro_f1) }}</div>
+      <div class="stat-hint">macro precision {{ "%.3f"|format(summary.metrics.macro_precision) }} &middot; macro recall {{ "%.3f"|format(summary.metrics.macro_recall) }}</div>
+    {% else %}
+      <div class="stat-value is-muted">Not available</div>
+      <div class="stat-hint">Macro scores treat all 22 crops equally.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if summary.metrics %}
+<div class="alert alert-ok" style="margin-top:1.1rem">
+  {{ ic.icon('check', 18) }}
+  <div>
+    <strong>{{ summary.metrics.selected_model }}</strong> is deployed, trained on
+    {{ "{:,}".format(summary.dataset.rows) }} records at {{ summary.metrics.trained_at_utc }} (UTC).
+    These are test-set metrics for the whole model, not the confidence of a single prediction.
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-2" style="margin-top:0.4rem">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Crop class distribution</h2>
+        <p>Number of training records per crop label, counted from the dataset.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('chart', 18) }}</span>
+    </div>
+    {% if summary.dataset.class_counts %}
+      <div class="chart-box" id="classDistribution" data-chart="class-distribution" style="min-height:380px"></div>
+      <noscript><p class="muted">Enable JavaScript to see the interactive chart, or open the Dataset Insights page for the table.</p></noscript>
+    {% else %}
+      <p class="muted">The dataset has not been loaded yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>How the system works</h2>
+        <p>Four steps from raw measurements to a predicted crop.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('cpu', 18) }}</span>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Collect inputs</h3>
+        <p>Seven numeric values: N, P, K, temperature, humidity, soil pH and rainfall.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Validate</h3>
+        <p>Missing, non-numeric or impossible values are rejected before the model runs. Unusual but possible values raise a warning.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Predict</h3>
+        <p>The saved scikit-learn pipeline receives the features in training order and returns one of the {{ summary.dataset.n_classes or 22 }} crop labels.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Explain</h3>
+        <p>The result card shows the crop, the model used, the submitted values and any warnings, with a clear disclaimer.</p>
+      </div>
+    </div>
+    <div class="alert alert-info" style="margin:1rem 0 0">
+      {{ ic.icon('info', 18) }}
+      <div>
+        The dataset contains no location, soil-type or season field, so this model cannot make
+        district-specific claims. Treat the prediction as educational decision support.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>Quick links</h2>
+      <p>Jump straight to the part of the project you need.</p>
+    </div>
+  </div>
+  <div class="grid grid-3">
+    <a class="step" href="{{ url_for('recommend') }}" style="display:block">
+      <div class="step-num">{{ ic.icon('sprout', 15) }}</div>
+      <h3>Recommend a crop</h3>
+      <p>Open the prediction form and get a real model prediction.</p>
+    </a>
+    <a class="step" href="{{ url_for('performance') }}" style="display:block">
+      <div class="step-num">{{ ic.icon('chart', 15) }}</div>
+      <h3>Compare models</h3>
+      <p>Decision Tree vs Random Forest vs SVM with measured metrics.</p>
+    </a>
+    <a class="step" href="{{ url_for('dataset_page') }}" style="display:block">
+      <div class="step-num">{{ ic.icon('database', 15) }}</div>
+      <h3>Inspect the dataset</h3>
+      <p>Statistics, class balance and feature distributions.</p>
+    </a>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if summary.dataset.class_counts %}
+<script>
+  window.__PAGE_DATA__ = { classCounts: {{ summary.dataset.class_counts|tojson }} };
+</script>
+{% endif %}
+{% endblock %}

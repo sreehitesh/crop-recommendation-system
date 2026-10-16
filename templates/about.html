@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block content %}
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>{{ ic.icon('info', 18) }} About this project</h2>
+      <p>Crop Recommendation System Using Machine Learning - version {{ summary.app_version }}</p>
+    </div>
+  </div>
+  <p>
+    This is a college-level machine learning project that predicts a suitable crop from seven soil and
+    environmental measurements. It was built to demonstrate the full path from a public agricultural
+    dataset to a deployed web application: data validation, model training and tuning, honest
+    evaluation on a held-out test set, model persistence, a Flask JSON API, input validation, an
+    automated test suite and complete documentation.
+  </p>
+  <div class="grid grid-3">
+    <div class="stat"><span class="stat-label">Dataset records</span><div class="stat-value">{{ summary.dataset.rows or '–' }}</div><small>verified at load time</small></div>
+    <div class="stat"><span class="stat-label">Crop classes</span><div class="stat-value">{{ summary.dataset.n_classes or '–' }}</div><small>multi-class classification</small></div>
+    <div class="stat"><span class="stat-label">Deployed model</span><div class="stat-value is-muted">{{ summary.model.name or 'Not trained yet' }}</div><small>selected from measured test metrics</small></div>
+  </div>
+</section>
+
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{{ ic.icon('cpu', 18) }} Technology stack</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+        <tbody>
+          <tr><td>Language</td><td>Python 3</td></tr>
+          <tr><td>Data handling</td><td>pandas, NumPy</td></tr>
+          <tr><td>Machine learning</td><td>scikit-learn (Decision Tree, Random Forest, SVM)</td></tr>
+          <tr><td>Model persistence</td><td>joblib (one complete pipeline)</td></tr>
+          <tr><td>Backend</td><td>Flask with REST-style JSON endpoints</td></tr>
+          <tr><td>Frontend</td><td>HTML5, custom CSS3 design system, vanilla JavaScript</td></tr>
+          <tr><td>Charts</td><td>Chart.js (with an offline HTML fallback) + matplotlib report images</td></tr>
+          <tr><td>Icons</td><td>Inline SVG icons in the Lucide style</td></tr>
+          <tr><td>Testing</td><td>pytest with the Flask test client</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>{{ ic.icon('check', 18) }} What is included</h2>
+    <ul class="clean">
+      <li>A real, verified agricultural dataset ({{ summary.dataset.rows or 2200 }} records, {{ summary.dataset.n_classes or 22 }} crop classes).</li>
+      <li>Three trained classifiers with cross-validated hyperparameters.</li>
+      <li>Measured accuracy, macro precision, macro recall, macro F1, per-class metrics and confusion matrices.</li>
+      <li>A saved pipeline used unchanged for every prediction.</li>
+      <li>Six dashboard pages: Overview, Crop Recommendation, Model Performance, Dataset Insights, Documentation, About.</li>
+      <li>Server-side and client-side validation with helpful messages.</li>
+      <li>An automated pytest suite for validation, prediction and HTTP routes.</li>
+      <li>Project documentation: dataset card, model card, user guide, technical documentation and test report.</li>
+    </ul>
+  </section>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{{ ic.icon('shield', 18) }} Responsible use</h2>
+    <ul class="clean">
+      <li>The prediction is a machine learning estimate, not agronomic advice.</li>
+      <li>Model accuracy measured on the test split is not the confidence of a single prediction.</li>
+      <li>Dataset range checks are warnings about missing training examples, not agricultural limits.</li>
+      <li>No location field exists in the data, so no district-specific claim is made.</li>
+      <li>Always confirm a crop choice with local soil tests, season, irrigation and expert guidance.</li>
+    </ul>
+    <div class="alert alert-warn" style="margin:0">
+      {{ ic.icon('alert', 18) }}
+      <div>Not intended for yield prediction, fertiliser prescriptions, disease diagnosis, irrigation
+        scheduling or commercial farm advisory use.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>{{ ic.icon('book', 18) }} Credits and attribution</h2>
+    <ul class="clean">
+      <li><strong>Dataset:</strong> Crop Recommendation Dataset, published on Kaggle by Atharva Ingle
+        (<span class="mono">Crop_recommendation.csv</span>). The publisher describes it as built by
+        augmenting Indian rainfall, climate and fertiliser data. It is used here for educational purposes;
+        check the Kaggle page for the applicable licence before redistribution.</li>
+      <li><strong>Dataset access:</strong> the download script fetches the same file from public mirrors and
+        verifies that two mirrors agree before saving, because the Kaggle page requires an account.</li>
+      <li><strong>Algorithms:</strong> scikit-learn implementations of CART decision trees, random forests and
+        the support vector classifier.</li>
+      <li><strong>Crop notes:</strong> brief neutral descriptions compiled from public general-agronomy
+        references; they are context for a label, not recommendations, and are not used by the model.</li>
+      <li><strong>Icons:</strong> inline SVGs in the Lucide style (ISC licence).</li>
+    </ul>
+  </section>
+</div>
+
+<section class="card">
+  <h2>{{ ic.icon('target', 18) }} Scope</h2>
+  <div class="grid grid-2">
+    <div>
+      <h3>In scope</h3>
+      <ul class="clean">
+        <li>Seven-feature multi-class crop classification.</li>
+        <li>Three-algorithm comparison with reproducible evaluation.</li>
+        <li>Deployment of the selected model behind a Flask API and dashboard.</li>
+        <li>Documentation, tests and honest limitations.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Out of scope</h3>
+      <ul class="clean">
+        <li>Yield, profit or crop-success prediction.</li>
+        <li>Live weather or soil sensor integration.</li>
+        <li>District-specific recommendations.</li>
+        <li>Fertiliser, disease or irrigation advice; user accounts; cloud hosting.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>{{ ic.icon('sprout', 18) }} Project information</h2>
+  <dl class="kv">
+    <div><dt>Project title</dt><dd>Crop Recommendation System Using Machine Learning</dd></div>
+    <div><dt>Application version</dt><dd>{{ summary.app_version }}</dd></div>
+    <div><dt>Problem type</dt><dd>Supervised multi-class classification</dd></div>
+    <div><dt>Sample size</dt><dd>{{ summary.dataset.rows or 2200 }} records</dd></div>
+    <div><dt>Number of classes</dt><dd>{{ summary.dataset.n_classes or 22 }} crops</dd></div>
+    <div><dt>Deployed algorithm</dt><dd>{{ summary.model.name or 'not trained yet' }}</dd></div>
+    {% if summary.metrics %}
+    <div><dt>Test accuracy</dt><dd>{{ "%.4f"|format(summary.metrics.accuracy) }}</dd></div>
+    <div><dt>Test macro F1</dt><dd>{{ "%.4f"|format(summary.metrics.macro_f1) }}</dd></div>
+    <div><dt>Last trained</dt><dd>{{ summary.metrics.trained_at_utc }} UTC</dd></div>
+    {% endif %}
+    <div><dt>Reference class descriptions</dt><dd>{{ crop_count }} crop labels documented</dd></div>
+  </dl>
+</section>
+
+{% endblock %}

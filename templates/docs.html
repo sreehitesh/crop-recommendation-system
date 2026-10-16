@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block content %}
+
+<div class="doc-nav">
+  <a href="#objective">Objective</a>
+  <a href="#problem">Problem statement</a>
+  <a href="#inputs">Inputs</a>
+  <a href="#output">Output</a>
+  <a href="#dataset">Dataset</a>
+  <a href="#algorithms">Algorithms</a>
+  <a href="#workflow">Training workflow</a>
+  <a href="#metrics">Evaluation metrics</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#api">API reference</a>
+  <a href="#validation">Validation policy</a>
+  <a href="#limitations">Limitations</a>
+  <a href="#run">How to run</a>
+</div>
+
+<section class="card doc-section" id="objective">
+  <div class="card-head">
+    <div><h2>{{ ic.icon('target', 18) }} Project objective</h2>
+      <p>Crop Recommendation System Using Machine Learning</p></div>
+  </div>
+  <p>
+    Build a reproducible machine learning web application that recommends a crop label from seven
+    soil and climate measurements. The project trains and compares three classifiers on a public
+    agricultural dataset, records their measured performance, deploys the best one through a Flask
+    API and exposes it in a dashboard that is honest about what the model can and cannot do.
+  </p>
+  <div class="steps" style="margin-top:.6rem">
+    <div class="step"><h3>Compare</h3><p>Decision Tree, Random Forest and SVM tuned with cross-validation on the training split.</p></div>
+    <div class="step"><h3>Measure</h3><p>Accuracy, macro precision, macro recall, macro F1, per-class metrics and confusion matrices on a held-out test set.</p></div>
+    <div class="step"><h3>Deploy</h3><p>The selected pipeline is saved with joblib and re-used as-is for every prediction - no retraining per request.</p></div>
+  </div>
+</section>
+
+<section class="card doc-section" id="problem">
+  <h2>{{ ic.icon('info', 18) }} Problem statement</h2>
+  <p>
+    Choosing a crop means matching soil fertility and expected weather to a crop's requirements.
+    Soil test reports give N, P, K and pH; weather records give temperature, humidity and rainfall.
+    This project shows that a supervised classifier can learn the pattern between those seven numbers
+    and the crop label recorded for them, and can then return a consistent suggestion for a new set of
+    measurements.
+  </p>
+  <p class="muted">
+    The system is a decision-support prototype. It does not predict yield, profit or crop success, and
+    it contains no fertiliser, irrigation or disease advice.
+  </p>
+</section>
+
+<section class="card doc-section" id="inputs">
+  <h2>{{ ic.icon('flask', 18) }} Input features</h2>
+  <p>Seven numeric values are required. This is the exact order used to train the model, and the API
+     re-orders every request into it before inference.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Feature</th><th>Unit / scale</th><th>Accepted range</th><th>Description</th></tr></thead>
+      <tbody>
+        {% for key, spec in feature_specs.items() %}
+        <tr>
+          <td class="num">{{ loop.index }}</td>
+          <td class="mono">{{ key }}</td>
+          <td>{{ spec.unit }}</td>
+          <td class="nowrap">{{ spec.hard_min|string|replace('.0','') }} to {{ spec.hard_max|string|replace('.0','') }}</td>
+          <td style="white-space:normal">{{ spec.help }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card doc-section" id="output">
+  <h2>{{ ic.icon('sprout', 18) }} Expected output</h2>
+  <ul class="clean">
+    <li><strong>Predicted crop</strong> - one label from the {{ summary.dataset.n_classes or 22 }} classes present in the training data.</li>
+    <li><strong>Model used</strong> - the name of the deployed algorithm{% if summary.model.name %}: <strong>{{ summary.model.name }}</strong>{% endif %}.</li>
+    <li><strong>Submitted values</strong> - echoed back so the user can confirm what was sent.</li>
+    <li><strong>Model scores</strong> - optional, only when the deployed algorithm exposes class scores, and always labelled as model scores rather than real-world probabilities.</li>
+    <li><strong>Warnings</strong> - raised when a value falls outside the range seen in training.</li>
+  </ul>
+</section>
+
+<section class="card doc-section" id="dataset">
+  <h2>{{ ic.icon('database', 18) }} Dataset source</h2>
+  <p>
+    Public <em>Crop Recommendation Dataset</em> (Atharva Ingle), commonly distributed on Kaggle as
+    <span class="mono">Crop_recommendation.csv</span>.
+    <a href="https://www.kaggle.com/datasets/atharvaingle/crop-recommendation-dataset" target="_blank" rel="noopener">
+      kaggle.com/datasets/atharvaingle/crop-recommendation-dataset {{ ic.icon('external', 13) }}
+    </a>
+  </p>
+  <div class="grid grid-3">
+    <div class="stat"><span class="stat-label">Records</span><div class="stat-value">{{ summary.dataset.rows or '–' }}</div><small>verified from the loaded file</small></div>
+    <div class="stat"><span class="stat-label">Crop classes</span><div class="stat-value">{{ summary.dataset.n_classes or '–' }}</div><small>100 records per class</small></div>
+    <div class="stat"><span class="stat-label">Missing values</span><div class="stat-value">0</div><small>and no duplicate rows</small></div>
+  </div>
+  <p class="muted" style="margin-top:.9rem">
+    The file is verified at load time: column names, numeric types, missing values, duplicates and class
+    counts are checked before training. The dataset publisher states it was built by augmenting Indian
+    rainfall, climate and fertiliser data. See <span class="mono">docs/DATASET.md</span> for the full data card and attribution.
+  </p>
+</section>
+
+<section class="card doc-section" id="algorithms">
+  <h2>{{ ic.icon('cpu', 18) }} Machine learning algorithms</h2>
+  {% if metrics %}
+  <div class="steps">
+    {% for key, model in metrics.models.items() %}
+    <div class="step">
+      <div class="step-num">{{ loop.index }}</div>
+      <h3>{{ model.name }}</h3>
+      <p>{{ model.summary }}</p>
+      <p style="margin:.5rem 0 0;font-size:.8rem">
+        Best parameters: <span class="mono">{{ model.best_params }}</span><br>
+        Test accuracy {{ "%.4f"|format(model.test.accuracy) }} &middot; macro F1 {{ "%.4f"|format(model.test.macro_f1) }}
+      </p>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <ul class="clean">
+    <li><strong>Decision Tree</strong> - readable threshold rules; a single tree can overfit.</li>
+    <li><strong>Random Forest</strong> - many trees voting together; usually more accurate, less transparent.</li>
+    <li><strong>SVM</strong> - margin-based boundaries, wrapped with StandardScaler because it is scale-sensitive.</li>
+  </ul>
+  {% endif %}
+</section>
+
+<section class="card doc-section" id="workflow">
+  <h2>{{ ic.icon('refresh', 18) }} Training workflow</h2>
+  <ol class="clean">
+    <li>Load <span class="mono">data/Crop_recommendation.csv</span> and validate the schema (columns, dtypes, missing values, duplicates, class counts).</li>
+    <li>Separate X (seven features, in fixed order) from y (<span class="mono">label</span>); the target is never used as an input.</li>
+    <li>Stratified 80/20 train-test split with a fixed random seed so the split is reproducible.</li>
+    <li>Tune each algorithm with 5-fold stratified cross-validation <strong>inside the training partition only</strong>, scoring macro F1.</li>
+    <li>Evaluate the three tuned pipelines once each on the same held-out test set.</li>
+    <li>Select the deployed model from those measured test metrics, then save the complete fitted pipeline with joblib.</li>
+    <li>Write <span class="mono">reports/metrics.json</span>, <span class="mono">reports/classification_report.txt</span> and the confusion-matrix images.</li>
+  </ol>
+  {% if metrics %}
+  <p class="muted" style="font-size:.83rem">
+    Last run: {{ metrics.trained_at_utc }} (UTC) &middot; dataset sha256
+    <span class="mono">{{ metrics.dataset.sha256[:16] }}…</span> &middot;
+    train/test {{ metrics.split.train_rows }}/{{ metrics.split.test_rows }} &middot;
+    scikit-learn {{ metrics.package_versions['scikit-learn'] }} &middot; Python {{ metrics.package_versions.python }}
+  </p>
+  {% endif %}
+</section>
+
+<section class="card doc-section" id="metrics">
+  <h2>{{ ic.icon('chart', 18) }} Evaluation metrics</h2>
+  <ul class="clean">
+    <li><strong>Accuracy</strong> - share of correctly classified test records.</li>
+    <li><strong>Macro precision</strong> - average per-crop precision; every crop counts equally regardless of frequency.</li>
+    <li><strong>Macro recall</strong> - average per-crop recall.</li>
+    <li><strong>Macro F1</strong> - harmonic mean of macro precision and recall; the headline number because the classes are balanced.</li>
+    <li><strong>Per-class report and confusion matrix</strong> - show which crops are confused with which.</li>
+  </ul>
+  {% if metrics %}
+  <div class="table-wrap" style="margin-top:.6rem">
+    <table>
+      <caption>Measured on {{ metrics.split.test_rows }} held-out records ({{ metrics.trained_at_utc }} UTC).</caption>
+      <thead><tr><th>Algorithm</th><th class="num">Accuracy</th><th class="num">Macro precision</th><th class="num">Macro recall</th><th class="num">Macro F1</th></tr></thead>
+      <tbody>
+        {% for key, model in metrics.models.items() %}
+        <tr class="{{ 'is-best' if key == metrics.selected_model.key }}">
+          <td>{{ model.name }}{% if key == metrics.selected_model.key %} <span class="badge">deployed</span>{% endif %}</td>
+          <td class="num">{{ "%.4f"|format(model.test.accuracy) }}</td>
+          <td class="num">{{ "%.4f"|format(model.test.macro_precision) }}</td>
+          <td class="num">{{ "%.4f"|format(model.test.macro_recall) }}</td>
+          <td class="num">{{ "%.4f"|format(model.test.macro_f1) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-warn" style="margin-top:.6rem">
+    {{ ic.icon('alert', 18) }}
+    <div>No training run has been recorded yet, so no metrics are shown. Run
+      <code>{{ train_command }}</code>.</div>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card doc-section" id="architecture">
+  <h2>{{ ic.icon('cpu', 18) }} System architecture</h2>
+  <pre class="code">Browser UI (HTML + CSS + JavaScript + Chart.js)
+        |
+        |  fetch POST /api/predict  { N, P, K, temperature, humidity, ph, rainfall }
+        v
+Flask backend (app.py)  ->  server-side validation (src/validate_data.py)
+        |
+        v
+Saved scikit-learn pipeline (models/crop_pipeline.joblib)
+        |
+        v
+Predicted crop label + optional model scores + warnings  ->  result card
+
+Training is separate:  src/train.py  ->  models/ + reports/</pre>
+  <ul class="clean">
+    <li><span class="mono">app.py</span> - Flask routes, JSON API, error handling, report image serving.</li>
+    <li><span class="mono">src/train.py</span> - dataset validation, tuning, evaluation, artifact and report writing.</li>
+    <li><span class="mono">src/predict.py</span> - loads the saved pipeline and produces predictions (also a CLI).</li>
+    <li><span class="mono">src/validate_data.py</span> - dataset schema checks and payload validation policy.</li>
+    <li><span class="mono">src/common.py</span> - paths, feature order and training constants shared by every module.</li>
+    <li><span class="mono">tests/</span> - pytest suite covering validation, prediction and the HTTP API.</li>
+  </ul>
+</section>
+
+<section class="card doc-section" id="api">
+  <h2>{{ ic.icon('table', 18) }} API reference</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Endpoint</th><th>Method</th><th>Purpose</th><th>Error codes</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">/api/health</td><td>GET</td><td>Application, dataset and model readiness</td><td>–</td></tr>
+        <tr><td class="mono">/api/summary</td><td>GET</td><td>Headline dataset and metric statistics</td><td>–</td></tr>
+        <tr><td class="mono">/api/dataset-insights</td><td>GET</td><td>Full dataset profile and distributions</td><td>503 if the dataset is missing</td></tr>
+        <tr><td class="mono">/api/model-metrics</td><td>GET</td><td>Measured model comparison metrics</td><td>503 if no training run exists</td></tr>
+        <tr><td class="mono">/api/predict</td><td>POST</td><td>Validate seven features and return the predicted crop</td><td>400 invalid input, 503 model missing, 500 unexpected</td></tr>
+        <tr><td class="mono">/reports/&lt;file&gt;.png</td><td>GET</td><td>Generated evaluation images (whitelisted names only)</td><td>404</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:.8rem"><strong>Example request</strong></p>
+  <pre class="code">curl -X POST http://127.0.0.1:5000/api/predict ^
+     -H "Content-Type: application/json" ^
+     -d "{\"N\":90,\"P\":42,\"K\":43,\"temperature\":25,\"humidity\":80,\"ph\":6.5,\"rainfall\":200}"</pre>
+  <p><strong>Example success response</strong></p>
+  <pre class="code">{
+  "status": "success",
+  "predicted_crop": "&lt;label returned by the trained model&gt;",
+  "model_name": {{ (summary.model.name or '&lt;deployed algorithm&gt;')|tojson }},
+  "input_values": { "N": 90, "P": 42, "K": 43, "temperature": 25, "humidity": 80, "ph": 6.5, "rainfall": 200 },
+  "warnings": [],
+  "top_scores": [ { "crop": "&lt;class&gt;", "score": 0.0 } ],
+  "scores_meaning": "&lt;how to read the scores&gt;"
+}</pre>
+  <p><strong>Example validation error response</strong> (HTTP 400)</p>
+  <pre class="code">{
+  "status": "error",
+  "error": "Input validation failed.",
+  "field_errors": { "N": "Nitrogen (N) must be a number (received 'hello')." }
+}</pre>
+</section>
+
+<section class="card doc-section" id="validation">
+  <h2>{{ ic.icon('shield', 18) }} Validation policy</h2>
+  <ul class="clean">
+    <li><strong>Hard rejection (400):</strong> missing field, empty value, non-numeric text, NaN or Infinity, or a value outside a physically meaningful range (humidity outside 0-100 %, pH outside 0-14, negative rainfall, and so on).</li>
+    <li><strong>Accepted with warning (200):</strong> a numeric, physically possible value that lies outside the range observed in the training data. The prediction is still returned, with a warning that the model has no similar examples.</li>
+    <li>The dataset minimum and maximum are <em>not</em> treated as agricultural limits.</li>
+    <li>User values are never silently changed, rounded or clamped.</li>
+    <li>The browser performs the same checks for quick feedback, and the server re-validates every request regardless.</li>
+  </ul>
+</section>
+
+<section class="card doc-section" id="limitations">
+  <h2>{{ ic.icon('alert', 18) }} Limitations and responsible use</h2>
+  <ul class="clean">
+    <li>The dataset has no location, soil-type, season or irrigation field, so the model cannot make regional claims.</li>
+    <li>Every crop class has exactly 100 records, which is unrealistic for real farm surveys and makes the task easier than field conditions.</li>
+    <li>Records appear partly augmented, so the model learns dataset patterns rather than measured farm outcomes.</li>
+    <li>Model scores are not calibrated probabilities of crop success.</li>
+    <li>Rainfall's accumulation period is not documented, so the interface states only "mm".</li>
+    <li>The output is educational decision support and should be checked against local soil tests and agricultural advice.</li>
+  </ul>
+</section>
+
+<section class="card doc-section" id="run">
+  <h2>{{ ic.icon('refresh', 18) }} How to run the project (Windows)</h2>
+  <pre class="code">:: 1. open the project folder
+cd "C:\path\to\project"
+
+:: 2. create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+:: 3. install dependencies
+pip install -r requirements.txt
+
+:: 4. get the dataset (skip if data\Crop_recommendation.csv already exists)
+python src\download_dataset.py
+
+:: 5. train and evaluate the three models
+python src\train.py
+
+:: 6. start the web application
+python app.py</pre>
+  <p>Then open <span class="mono">http://127.0.0.1:5000</span> in a browser and use the
+     <em>Crop Recommendation</em> page. Run the automated tests with <span class="mono">pytest -q</span>.</p>
+  <p class="muted" style="font-size:.83rem">
+    More detail: <span class="mono">README.md</span> (quick start),
+    <span class="mono">README_PROJECT.md</span> (full explanation of how everything works),
+    <span class="mono">docs/USER_GUIDE.md</span>, <span class="mono">docs/MODEL_CARD.md</span>,
+    <span class="mono">docs/DATASET.md</span>, <span class="mono">docs/TECHNICAL_DOCUMENTATION.md</span>.
+  </p>
+</section>
+
+{% endblock %}

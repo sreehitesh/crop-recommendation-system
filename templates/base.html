@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Crop Recommendation System - a machine learning dashboard that suggests a suitable crop from soil nutrients and environmental conditions.">
+  <title>{{ page_title }} &middot; Crop Recommendation System</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{% import "_icons.html" as ic %}
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="brand">
+      <span class="brand-mark">{{ ic.icon('leaf', 22) }}</span>
+      <span class="brand-text">
+        <strong>Crop Advisor</strong>
+        <small>ML recommendation dashboard</small>
+      </span>
+    </div>
+
+    <nav class="nav">
+      <span class="nav-label">Dashboard</span>
+      <a class="nav-link {{ 'is-active' if page == 'overview' }}" href="{{ url_for('index') }}">
+        {{ ic.icon('dashboard') }}<span>Overview</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if page == 'recommend' }}" href="{{ url_for('recommend') }}">
+        {{ ic.icon('sprout') }}<span>Crop Recommendation</span>
+      </a>
+
+      <span class="nav-label">Analysis</span>
+      <a class="nav-link {{ 'is-active' if page == 'performance' }}" href="{{ url_for('performance') }}">
+        {{ ic.icon('chart') }}<span>Model Performance</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if page == 'dataset' }}" href="{{ url_for('dataset_page') }}">
+        {{ ic.icon('database') }}<span>Dataset Insights</span>
+      </a>
+
+      <span class="nav-label">Project</span>
+      <a class="nav-link {{ 'is-active' if page == 'docs' }}" href="{{ url_for('docs_page') }}">
+        {{ ic.icon('book') }}<span>Documentation</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if page == 'about' }}" href="{{ url_for('about_page') }}">
+        {{ ic.icon('info') }}<span>About Project</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="status-chip {{ 'ok' if model_ready else 'warn' }}">
+        {{ ic.icon('check' if model_ready else 'alert', 16) }}
+        <span>{{ 'Model loaded' if model_ready else 'Model not trained' }}</span>
+      </div>
+      <small>v{{ app_version }} &middot; educational decision support</small>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
+        {{ ic.icon('menu') }}
+      </button>
+      <div class="topbar-text">
+        <h1>{{ page_title }}</h1>
+        <p>{{ page_subtitle }}</p>
+      </div>
+      <div class="topbar-actions">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('recommend') }}">
+          {{ ic.icon('sparkles', 16) }} <span class="hide-sm">Recommend a crop</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="content" id="main-content">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <div>
+        <strong>Crop Recommendation System</strong> v{{ app_version }} &middot;
+        Machine learning estimate only &mdash; verify with local agricultural guidance.
+      </div>
+      <div class="footer-links">
+        <a href="{{ url_for('docs_page') }}">Documentation</a>
+        <a href="{{ url_for('dataset_page') }}">Dataset</a>
+        <a href="{{ url_for('about_page') }}">About</a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<div class="sidebar-scrim" id="sidebarScrim" hidden></div>
+
+<script>
+  window.__APP__ = {
+    version: {{ app_version|tojson }},
+    modelReady: {{ model_ready|tojson }},
+    predictUrl: {{ url_for('api_predict')|tojson }}
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

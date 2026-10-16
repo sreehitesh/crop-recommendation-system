@@ -1,0 +1,138 @@
+==============================================================================
+CROP RECOMMENDATION SYSTEM - CLASSIFICATION REPORT
+==============================================================================
+App version          : 1.0.0
+Trained at (UTC)     : 2026-10-16T06:01:29+00:00
+Dataset              : Crop_recommendation.csv
+Dataset rows         : 2200
+Crop classes         : 22
+Train / test rows    : 1760 / 440
+Split                : stratified 80/20, random_state=42
+Cross-validation     : StratifiedKFold(n_splits=5), scoring=f1_macro (training partition only)
+
+MODEL COMPARISON (held-out test set)
+------------------------------------------------------------------------------
+Model                               Accuracy   Macro P   Macro R  Macro F1
+Decision Tree                         0.9795    0.9806    0.9795    0.9794
+Random Forest                         0.9955    0.9957    0.9955    0.9955
+Support Vector Machine (SVM)          0.9886    0.9897    0.9886    0.9886
+
+Selected model: Random Forest
+Selection policy: Hyperparameters are tuned with 5-fold stratified cross-validation on the training partition only (scoring = macro F1). The test set is untouched during tuning. All three tuned models are then evaluated once on the same held-out test set, and the model with the highest held-out macro F1 is selected (ties broken by accuracy, then by cross-validation score).
+
+==============================================================================
+Decision Tree - per-class test metrics
+==============================================================================
+Best hyperparameters : {'criterion': 'gini', 'max_depth': None, 'min_samples_leaf': 2}
+Cross-validation     : 0.9858 (macro F1, +/- 0.0051, best of 18 candidates)
+Fit time (seconds)   : 3.93
+
+              precision    recall  f1-score   support
+
+       apple       1.00      1.00      1.00        20
+      banana       1.00      1.00      1.00        20
+   blackgram       1.00      0.80      0.89        20
+    chickpea       1.00      1.00      1.00        20
+     coconut       1.00      1.00      1.00        20
+      coffee       1.00      1.00      1.00        20
+      cotton       1.00      1.00      1.00        20
+      grapes       1.00      1.00      1.00        20
+        jute       0.95      0.95      0.95        20
+ kidneybeans       1.00      1.00      1.00        20
+      lentil       0.86      0.90      0.88        20
+       maize       0.95      1.00      0.98        20
+       mango       1.00      1.00      1.00        20
+   mothbeans       0.86      0.95      0.90        20
+    mungbean       1.00      1.00      1.00        20
+   muskmelon       1.00      1.00      1.00        20
+      orange       1.00      1.00      1.00        20
+      papaya       1.00      1.00      1.00        20
+  pigeonpeas       1.00      1.00      1.00        20
+ pomegranate       1.00      1.00      1.00        20
+        rice       0.95      0.95      0.95        20
+  watermelon       1.00      1.00      1.00        20
+
+    accuracy                           0.98       440
+   macro avg       0.98      0.98      0.98       440
+weighted avg       0.98      0.98      0.98       440
+
+
+==============================================================================
+Random Forest - per-class test metrics
+==============================================================================
+Best hyperparameters : {'max_depth': None, 'min_samples_leaf': 1, 'n_estimators': 200}
+Cross-validation     : 0.9943 (macro F1, +/- 0.0048, best of 12 candidates)
+Fit time (seconds)   : 4.97
+
+              precision    recall  f1-score   support
+
+       apple       1.00      1.00      1.00        20
+      banana       1.00      1.00      1.00        20
+   blackgram       1.00      0.95      0.97        20
+    chickpea       1.00      1.00      1.00        20
+     coconut       1.00      1.00      1.00        20
+      coffee       1.00      1.00      1.00        20
+      cotton       1.00      1.00      1.00        20
+      grapes       1.00      1.00      1.00        20
+        jute       0.95      1.00      0.98        20
+ kidneybeans       1.00      1.00      1.00        20
+      lentil       1.00      1.00      1.00        20
+       maize       0.95      1.00      0.98        20
+       mango       1.00      1.00      1.00        20
+   mothbeans       1.00      1.00      1.00        20
+    mungbean       1.00      1.00      1.00        20
+   muskmelon       1.00      1.00      1.00        20
+      orange       1.00      1.00      1.00        20
+      papaya       1.00      1.00      1.00        20
+  pigeonpeas       1.00      1.00      1.00        20
+ pomegranate       1.00      1.00      1.00        20
+        rice       1.00      0.95      0.97        20
+  watermelon       1.00      1.00      1.00        20
+
+    accuracy                           1.00       440
+   macro avg       1.00      1.00      1.00       440
+weighted avg       1.00      1.00      1.00       440
+
+
+==============================================================================
+Support Vector Machine (SVM) - per-class test metrics
+==============================================================================
+Best hyperparameters : {'svc__C': 10, 'svc__gamma': 'scale', 'svc__kernel': 'linear'}
+Cross-validation     : 0.9857 (macro F1, +/- 0.0018, best of 6 candidates)
+Fit time (seconds)   : 0.75
+
+              precision    recall  f1-score   support
+
+       apple       1.00      1.00      1.00        20
+      banana       1.00      1.00      1.00        20
+   blackgram       1.00      1.00      1.00        20
+    chickpea       1.00      1.00      1.00        20
+     coconut       1.00      1.00      1.00        20
+      coffee       1.00      1.00      1.00        20
+      cotton       0.95      1.00      0.98        20
+      grapes       1.00      1.00      1.00        20
+        jute       0.87      1.00      0.93        20
+ kidneybeans       1.00      1.00      1.00        20
+      lentil       0.95      1.00      0.98        20
+       maize       1.00      0.95      0.97        20
+       mango       1.00      1.00      1.00        20
+   mothbeans       1.00      0.95      0.97        20
+    mungbean       1.00      1.00      1.00        20
+   muskmelon       1.00      1.00      1.00        20
+      orange       1.00      1.00      1.00        20
+      papaya       1.00      1.00      1.00        20
+  pigeonpeas       1.00      1.00      1.00        20
+ pomegranate       1.00      1.00      1.00        20
+        rice       1.00      0.85      0.92        20
+  watermelon       1.00      1.00      1.00        20
+
+    accuracy                           0.99       440
+   macro avg       0.99      0.99      0.99       440
+weighted avg       0.99      0.99      0.99       440
+
+
+==============================================================================
+NOTE
+==============================================================================
+Metrics describe performance on this dataset's held-out test split. They are
+not a guarantee of agronomic success on any specific farm or season.

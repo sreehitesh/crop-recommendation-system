@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block content %}
+
+{% if not model_ready %}
+<div class="alert alert-error">
+  {{ ic.icon('alert', 18) }}
+  <div>
+    <strong>The trained model is not available, so predictions are disabled.</strong>
+    <p style="margin:.35rem 0 0">
+      Run <code>python src/train.py</code> in the project folder to train and save the pipeline,
+      then reload this page. No placeholder prediction is ever shown.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<div class="alert alert-info">
+  {{ ic.icon('info', 18) }}
+  <div>
+    Fill in the seven measurements reported for the soil and the growing environment.
+    All values must be numbers. Values outside the range seen in the training data are accepted
+    but flagged as a warning.
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Soil and environment inputs</h2>
+        <p>Seven numeric features, exactly the columns used to train the model.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('flask', 18) }}</span>
+    </div>
+
+    <form id="predictForm" novalidate autocomplete="off">
+      <fieldset class="fieldset">
+        <legend>{{ ic.icon('flask', 14) }} Soil nutrients</legend>
+        <div class="form-grid">
+          {% for key, spec in feature_specs.items() if spec.group == 'soil' %}
+          <div class="field" data-field-wrap="{{ key }}">
+            <label for="input-{{ key }}">{{ spec.label }}
+              <span class="unit">{{ spec.unit }}</span>
+            </label>
+            <input type="number" step="any" inputmode="decimal" id="input-{{ key }}"
+                   name="{{ key }}" data-feature="{{ key }}"
+                   data-hard-min="{{ spec.hard_min }}" data-hard-max="{{ spec.hard_max }}"
+                   placeholder="e.g. {{ '90' if key == 'N' else ('42' if key == 'P' else ('43' if key == 'K' else '6.5')) }}"
+                   aria-describedby="help-{{ key }} err-{{ key }}" required>
+            <span class="help" id="help-{{ key }}">{{ spec.help }}</span>
+            <span class="range-hint">Accepted range: {{ spec.hard_min|string|replace('.0','') }} to {{ spec.hard_max|string|replace('.0','') }}</span>
+            <span class="error" id="err-{{ key }}" role="alert"></span>
+          </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend>{{ ic.icon('cloud-rain', 14) }} Environmental conditions</legend>
+        <div class="form-grid">
+          {% for key, spec in feature_specs.items() if spec.group == 'environment' %}
+          <div class="field" data-field-wrap="{{ key }}">
+            <label for="input-{{ key }}">{{ spec.label }}
+              <span class="unit">{{ spec.unit }}</span>
+            </label>
+            <input type="number" step="any" inputmode="decimal" id="input-{{ key }}"
+                   name="{{ key }}" data-feature="{{ key }}"
+                   data-hard-min="{{ spec.hard_min }}" data-hard-max="{{ spec.hard_max }}"
+                   placeholder="e.g. {{ '25' if key == 'temperature' else ('80' if key == 'humidity' else '200') }}"
+                   aria-describedby="help-{{ key }} err-{{ key }}" required>
+            <span class="help" id="help-{{ key }}">{{ spec.help }}</span>
+            <span class="range-hint">Accepted range: {{ spec.hard_min|string|replace('.0','') }} to {{ spec.hard_max|string|replace('.0','') }}</span>
+            <span class="error" id="err-{{ key }}" role="alert"></span>
+          </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary" id="predictBtn" {{ 'disabled' if not model_ready }}>
+          {{ ic.icon('sparkles', 18) }} Predict Suitable Crop
+        </button>
+        <button type="button" class="btn btn-outline" id="exampleBtn">
+          {{ ic.icon('refresh', 16) }} Load Example Values
+        </button>
+        <button type="button" class="btn btn-ghost" id="resetBtn">
+          {{ ic.icon('refresh', 16) }} Reset Form
+        </button>
+      </div>
+      <p class="muted" style="margin:.7rem 0 0;font-size:.79rem">
+        "Load Example Values" only fills the form with the documentation example
+        (N 90, P 42, K 43, 25 °C, 80 %, pH 6.5, 200 mm). It does not produce a prediction -
+        press the predict button for a real model result.
+      </p>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" id="resultPlaceholder">
+      <div class="card-head">
+        <div>
+          <h2>Prediction result</h2>
+          <p>The model output appears here after a successful request.</p>
+        </div>
+        <span class="card-icon">{{ ic.icon('sprout', 18) }}</span>
+      </div>
+      <div id="resultError" hidden></div>
+      <p class="muted" id="resultHint">
+        Submit the form to run the trained pipeline. The response includes the predicted crop,
+        the algorithm that produced it, the values you submitted and any warnings.
+      </p>
+      <div id="resultCard" hidden></div>
+    </div>
+
+    <div class="card card-tight">
+      <div class="card-head" style="margin-bottom:.5rem">
+        <div>
+          <h3>Good to know</h3>
+        </div>
+        <span class="card-icon">{{ ic.icon('shield', 18) }}</span>
+      </div>
+      <ul class="clean" style="margin-bottom:0">
+        <li>This is a machine learning estimate, not an agronomic guarantee.</li>
+        <li>Model accuracy on the test set does not describe the reliability of one prediction.</li>
+        <li>Per-class scores, when shown, are model scores - not the chance that a crop will succeed.</li>
+        <li>Check the suggestion against local soil tests, season and expert advice.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.__PAGE_DATA__ = {
+    features: {{ feature_specs|tojson }},
+    example: { N: 90, P: 42, K: 43, temperature: 25, humidity: 80, ph: 6.5, rainfall: 200 }
+  };
+</script>
+{% endblock %}

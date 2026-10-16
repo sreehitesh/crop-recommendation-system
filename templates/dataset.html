@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block content %}
+
+{% if not insights.available %}
+<div class="alert alert-warn">
+  {{ ic.icon('alert', 18) }}
+  <div>
+    <strong>The dataset could not be loaded.</strong>
+    <p style="margin:.35rem 0 0">{{ insights.error }}</p>
+    <p style="margin:.35rem 0 0">Run <code>python src/download_dataset.py</code>, or place
+      <code>Crop_recommendation.csv</code> in the <code>data/</code> folder.</p>
+  </div>
+</div>
+{% else %}
+
+<div class="grid grid-auto">
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Records</span>{{ ic.icon('table', 18) }}</div>
+    <div class="stat-value">{{ "{:,}".format(insights.rows) }}</div>
+    <div class="stat-hint">{{ insights.file }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Columns</span>{{ ic.icon('database', 18) }}</div>
+    <div class="stat-value">{{ insights.columns|length }}</div>
+    <div class="stat-hint">7 features + 1 target ({{ insights.target_column }})</div>
+  </div>
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Crop classes</span>{{ ic.icon('leaf', 18) }}</div>
+    <div class="stat-value">{{ insights.n_classes }}</div>
+    <div class="stat-hint">distinct labels in the target column</div>
+  </div>
+  <div class="stat">
+    <div class="stat-top"><span class="stat-label">Data quality</span>{{ ic.icon('shield', 18) }}</div>
+    {% set total_missing = insights.missing_values.values()|sum %}
+    {% if total_missing == 0 and insights.duplicate_rows == 0 and not insights.problems %}
+      <div class="stat-value" style="color:var(--green-700)">Clean</div>
+      <div class="stat-hint">no missing values, no duplicate rows</div>
+    {% else %}
+      <div class="stat-value is-muted">Check needed</div>
+      <div class="stat-hint">{{ total_missing }} missing &middot; {{ insights.duplicate_rows }} duplicates</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if insights.problems %}
+<div class="alert alert-error">
+  {{ ic.icon('alert', 18) }}
+  <div><strong>Schema problems detected</strong>
+    <ul>{% for problem in insights.problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-ok">
+  {{ ic.icon('check', 18) }}
+  <div><strong>Schema validation passed.</strong>
+    Columns match the expected contract
+    (<span class="mono">{{ insights.columns|join(', ') }}</span>), all seven features are numeric and
+    finite, and the target column holds {{ insights.n_classes }} crop labels.
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Crop class distribution</h2>
+        <p>Records per crop label, counted directly from the CSV.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('chart', 18) }}</span>
+    </div>
+    <div class="chart-box" data-chart="class-distribution"></div>
+    <details style="margin-top:.8rem">
+      <summary class="muted" style="cursor:pointer;font-size:.83rem">Show the counts as a table</summary>
+      <div class="table-wrap" style="margin-top:.6rem">
+        <table>
+          <thead><tr><th>Crop</th><th class="num">Records</th></tr></thead>
+          <tbody>
+            {% for crop, count in insights.class_counts.items() %}
+            <tr><td>{{ crop }}</td><td class="num">{{ count }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Feature distribution</h2>
+        <p>Histogram of one input feature (12 equal-width bins).</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('chart', 18) }}</span>
+    </div>
+    <div class="field" style="max-width:280px">
+      <label for="featureSelect">Feature</label>
+      <select id="featureSelect" class="mono" style="padding:.55rem .6rem;border:1px solid var(--line);border-radius:10px;font-family:inherit">
+        {% for column in insights.histograms.keys() %}
+        <option value="{{ column }}" {{ 'selected' if column == 'N' }}>{{ column }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="chart-box" data-chart="feature-histogram"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>Columns and data types</h2>
+      <p>Read from the loaded CSV with pandas.</p>
+    </div>
+    <span class="card-icon">{{ ic.icon('table', 18) }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Role</th><th>Type in file</th><th>Meaning / unit</th></tr></thead>
+      <tbody>
+        {% for column in insights.columns %}
+        <tr>
+          <td class="mono">{{ column }}</td>
+          <td>
+            {% if column == insights.target_column %}<span class="badge blue">Target</span>
+            {% else %}<span class="badge neutral">Input feature</span>{% endif %}
+          </td>
+          <td class="mono">{{ insights.dtypes.get(column, '–') }}</td>
+          <td>
+            {% if column == insights.target_column %}Crop class to predict
+            {% else %}{{ insights.feature_specs.get(column, {}).get('unit', '–') }}{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="table-note">
+    Units follow the dataset documentation published with the Kaggle release: temperature in °C,
+    humidity as relative humidity in %, pH on the 0-14 scale and rainfall in mm. N, P and K are
+    described there as ratios of nutrient content in the soil, and the rainfall time period is not
+    stated, so no period is claimed in this interface.
+  </p>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Missing values and duplicates</h2>
+        <p>Quality checks executed before training.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('shield', 18) }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Check</th><th class="num">Result</th></tr></thead>
+        <tbody>
+          {% for column, count in insights.missing_values.items() %}
+          <tr><td>Missing values in <span class="mono">{{ column }}</span></td><td class="num">{{ count }}</td></tr>
+          {% endfor %}
+          <tr><td>Duplicate rows</td><td class="num">{{ insights.duplicate_rows }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Observed feature ranges</h2>
+        <p>Minimum and maximum in the dataset - not agricultural limits.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('target', 18) }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Feature</th><th class="num">Min</th><th class="num">Max</th></tr></thead>
+        <tbody>
+          {% for column, rng in insights.feature_ranges.items() %}
+          <tr><td class="mono">{{ column }}</td><td class="num">{{ "%.2f"|format(rng.min) }}</td><td class="num">{{ "%.2f"|format(rng.max) }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">
+      A value outside this range is accepted by the app but flagged with a warning, because the model
+      has no examples there. The range is not a statement about what crops can tolerate.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>Descriptive statistics</h2>
+      <p>Computed with pandas <span class="mono">describe()</span> on the seven numeric features.</p>
+    </div>
+    <span class="card-icon">{{ ic.icon('table', 18) }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Feature</th><th class="num">count</th><th class="num">mean</th><th class="num">std</th>
+            <th class="num">min</th><th class="num">25%</th><th class="num">50%</th><th class="num">75%</th><th class="num">max</th></tr>
+      </thead>
+      <tbody>
+        {% for column, stats in insights.describe.items() %}
+        <tr>
+          <td class="mono">{{ column }}</td>
+          {% for key in ['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max'] %}
+          <td class="num">{{ "%.3f"|format(stats[key]) }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>Dataset limitations</h2>
+      <p>What this dataset can and cannot support.</p>
+    </div>
+    <span class="card-icon">{{ ic.icon('alert', 18) }}</span>
+  </div>
+  <ul class="clean">
+    <li>No location, district, soil-type or season column exists, so no regional claim can be made.</li>
+    <li>Classes are perfectly balanced at 100 records each, which is convenient for training but unlike real farm surveys.</li>
+    <li>Values look synthetically augmented in places (long decimal tails), so the records are not raw field measurements.</li>
+    <li>Rainfall is documented only as "mm" without a stated accumulation period.</li>
+    <li>Coverage is limited to {{ insights.n_classes }} crops and Indian agro-climatic conditions as described by the publisher.</li>
+  </ul>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if insights.available %}
+<script>
+  window.__PAGE_DATA__ = {
+    classCounts: {{ insights.class_counts|tojson }},
+    histograms: {{ insights.histograms|tojson }}
+  };
+</script>
+{% endif %}
+{% endblock %}

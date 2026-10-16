@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block content %}
+
+{% if not metrics %}
+<div class="alert alert-warn">
+  {{ ic.icon('alert', 18) }}
+  <div>
+    <strong>No evaluation results are available yet.</strong>
+    <p style="margin:.35rem 0 0">
+      Train the models first with <code>{{ train_command }}</code>. This page reads the measured
+      metrics from <code>reports/metrics.json</code>; it never displays sample numbers.
+    </p>
+  </div>
+</div>
+{% else %}
+
+{% set selected = metrics.selected_model %}
+<div class="card" style="border-color:var(--green-100);background:linear-gradient(180deg,var(--green-50),#fff 70%)">
+  <div class="result-hero">
+    <div class="result-crop">
+      <span class="result-crop-mark">{{ ic.icon('sparkles', 24) }}</span>
+      <div>
+        <div class="muted" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.08em">Deployed model</div>
+        <div class="result-crop-name" style="text-transform:none">{{ selected.name }}</div>
+      </div>
+    </div>
+    <div class="result-meta">
+      <span class="pill">{{ ic.icon('target', 15) }} Test accuracy {{ "%.2f"|format(selected.test.accuracy * 100) }}%</span>
+      <span class="pill">{{ ic.icon('chart', 15) }} Macro F1 {{ "%.3f"|format(selected.test.macro_f1) }}</span>
+      <span class="pill">{{ ic.icon('database', 15) }} {{ metrics.split.test_rows }} held-out test records</span>
+      <span class="pill">{{ ic.icon('cpu', 15) }} trained {{ metrics.trained_at_utc }} UTC</span>
+    </div>
+  </div>
+  <p class="muted" style="margin:.9rem 0 0;font-size:.83rem">
+    <strong>Selection policy.</strong> {{ metrics.training_config.selection_policy }}
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>Model comparison (held-out test set)</h2>
+      <p>Every value below was produced by the training pipeline and stored in <code>reports/metrics.json</code>.</p>
+    </div>
+    <span class="card-icon">{{ ic.icon('table', 18) }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <caption>
+        Stratified {{ ((1 - metrics.training_config.test_size) * 100)|int }}/{{ (metrics.training_config.test_size * 100)|int }} split
+        (random_state={{ metrics.training_config.random_seed }}),
+        tuned with {{ metrics.training_config.cv_folds }}-fold cross-validation on the training partition only.
+      </caption>
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th class="num">Accuracy</th>
+          <th class="num">Macro precision</th>
+          <th class="num">Macro recall</th>
+          <th class="num">Macro F1</th>
+          <th class="num">CV macro F1</th>
+          <th class="num">Fit time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, model in metrics.models.items() %}
+        <tr class="{{ 'is-best' if key == selected.key }}">
+          <td>
+            {{ model.name }}
+            {% if key == selected.key %}<span class="badge">{{ ic.icon('check', 13) }} selected</span>{% endif %}
+          </td>
+          <td class="num">{{ "%.4f"|format(model.test.accuracy) }}</td>
+          <td class="num">{{ "%.4f"|format(model.test.macro_precision) }}</td>
+          <td class="num">{{ "%.4f"|format(model.test.macro_recall) }}</td>
+          <td class="num">{{ "%.4f"|format(model.test.macro_f1) }}</td>
+          <td class="num">{{ "%.4f"|format(model.cv_best_score) }}</td>
+          <td class="num">{{ "%.1f"|format(model.fit_seconds) }}s</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="table-note">
+    CV macro F1 is the best cross-validated training score for the tuned hyperparameters.
+    Accuracy counts all correct predictions; the macro scores average the per-crop scores so that
+    every crop counts equally, which matters because all {{ metrics.dataset.n_classes }} classes are balanced here.
+  </p>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Metric comparison</h2>
+        <p>Same numbers as the table, as a grouped bar chart.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('chart', 18) }}</span>
+    </div>
+    <div class="chart-box" data-chart="model-comparison"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Tuned hyperparameters</h2>
+        <p>Selected by grid search inside the training partition only.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('cpu', 18) }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Algorithm</th><th>Best parameters</th><th class="num">Candidates</th></tr></thead>
+        <tbody>
+          {% for key, model in metrics.models.items() %}
+          <tr>
+            <td>{{ model.name }}</td>
+            <td class="mono nowrap">{{ model.best_params }}</td>
+            <td class="num">{{ model.cv_candidates }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>Confusion matrices</h2>
+      <p>Rows are the true crop, columns the predicted crop. Generated with matplotlib during training.</p>
+    </div>
+    <span class="card-icon">{{ ic.icon('table', 18) }}</span>
+  </div>
+  <div class="image-tabs" role="tablist">
+    {% for key, model in metrics.models.items() %}
+    <button class="tab-btn {{ 'is-active' if key == selected.key }}" data-matrix="{{ 'confusion_matrix' if key == selected.key else 'confusion_matrix_' + key }}">
+      {{ model.name }}{% if key == selected.key %} (selected){% endif %}
+    </button>
+    {% endfor %}
+  </div>
+  <img class="report-image" id="confusionImage"
+       src="{{ url_for('report_file', filename='confusion_matrix.png') }}"
+       alt="Confusion matrix for the selected model on the held-out test set" loading="lazy">
+  <p class="table-note">
+    A perfect classifier would have values only on the diagonal. Off-diagonal cells are the crops
+    the model confused with each other on the test split.
+  </p>
+</div>
+
+{% if metrics.models[selected.key].feature_importance %}
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Feature importance ({{ selected.name }})</h2>
+        <p>Relative weight the selected model assigns to each input feature.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('chart', 18) }}</span>
+    </div>
+    <div class="chart-box" data-chart="feature-importance"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>What this means</h2>
+        <p>Reading the importance of the seven inputs.</p>
+      </div>
+      <span class="card-icon">{{ ic.icon('info', 18) }}</span>
+    </div>
+    <ul class="clean">
+      <li>Importance is relative, not causal: it shows how much the model relied on a feature, not how a crop responds to it.</li>
+      <li>Correlated features split their importance between them (for example N, P and K often vary together).</li>
+      <li>Importance is computed on the training split, so it describes the fitted model rather than the field.</li>
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <h2>The three algorithms, in plain language</h2>
+      <p>Why these three, and what each one does with the data.</p>
+    </div>
+    <span class="card-icon">{{ ic.icon('book', 18) }}</span>
+  </div>
+  <div class="steps">
+    {% for key, model in metrics.models.items() %}
+    <div class="step">
+      <div class="step-num">{{ loop.index }}</div>
+      <h3>{{ model.name }}{% if key == selected.key %} &middot; <span class="badge">deployed</span>{% endif %}</h3>
+      <p>{{ model.summary }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="alert alert-info">
+  {{ ic.icon('info', 18) }}
+  <div>
+    <strong>Test metrics are not prediction confidence.</strong>
+    The percentages on this page summarise how often each model was right across
+    {{ metrics.split.test_rows }} unseen records taken from the same dataset. A single prediction for
+    your field cannot inherit that accuracy, and the dataset's {{ metrics.dataset.n_classes }} crops
+    do not cover every soil, season or region.
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if metrics %}
+<script>
+  window.__PAGE_DATA__ = {
+    comparison: {
+      labels: ["Accuracy", "Macro precision", "Macro recall", "Macro F1"],
+      models: [
+        {% for key, model in metrics.models.items() %}
+        { name: {{ model.name|tojson }}, key: {{ key|tojson }},
+          values: [{{ model.test.accuracy }}, {{ model.test.macro_precision }}, {{ model.test.macro_recall }}, {{ model.test.macro_f1 }}],
+          selected: {{ 'true' if key == metrics.selected_model.key else 'false' }} }{{ ',' if not loop.last }}
+        {% endfor %}
+      ]
+    },
+    featureImportance: {{ metrics.models[metrics.selected_model.key].feature_importance|tojson }},
+    matrixFiles: {
+      {% for key, model in metrics.models.items() %}
+      {{ key|tojson }}: {{ url_for('report_file', filename=('confusion_matrix.png' if key == metrics.selected_model.key else 'confusion_matrix_' + key + '.png'))|tojson }}{{ ',' if not loop.last }}
+      {% endfor %}
+    }
+  };
+</script>
+{% endif %}
+{% endblock %}
