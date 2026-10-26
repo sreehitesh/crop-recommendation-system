@@ -31,3 +31,7 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+
+# keep model for deployment
+!models/crop_pipeline.joblib
+!models/model_info.json
